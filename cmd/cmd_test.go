@@ -3,10 +3,12 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/ofly153351/portctl/internal/app"
+	"github.com/ofly153351/portctl/internal/dnsflush"
 	"github.com/ofly153351/portctl/internal/ports"
 	"github.com/ofly153351/portctl/internal/system"
 	"github.com/ofly153351/portctl/internal/ui"
@@ -293,6 +295,66 @@ func TestExitCodePortNotInUseIsZero(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("code = %d, want 0 (port-not-in-use is not an error)", code)
 	}
+}
+
+func TestDNSFlushUnsupportedOnNonMacOS(t *testing.T) {
+	var buf strings.Builder
+	printer := ui.NewPrinter(&buf, false)
+	calls := 0
+	err := dnsflush.Flush("linux", func(string, ...string) error {
+		calls++
+		return nil
+	}, printer.Success)
+	if err == nil || !strings.Contains(err.Error(), "supported only on macOS") {
+		t.Fatalf("error = %v, want macOS-only message", err)
+	}
+	if calls != 0 {
+		t.Fatalf("commands executed = %d, want 0", calls)
+	}
+}
+
+func TestDNSFlushRequiresFlushSubcommand(t *testing.T) {
+	_, out, code := runForTest(t, "dns")
+	if code != ExitUsage {
+		t.Fatalf("code = %d, want ExitUsage", code)
+	}
+	if !strings.Contains(out, "usage: portctl dns flush") {
+		t.Fatalf("output = %q", out)
+	}
+}
+
+func TestDNSFlushUsesTheExpectedCommandsOnMacOS(t *testing.T) {
+	oldFlusher, oldRun := activeDNSFlusher, dnsRun
+	t.Cleanup(func() {
+		activeDNSFlusher, dnsRun = oldFlusher, oldRun
+	})
+	activeDNSFlusher = dnsFlusherFunc(func(goos string, run dnsflush.Runner, report func(string)) error {
+		return dnsflush.Flush("darwin", run, report)
+	})
+	var calls [][]string
+	dnsRun = func(name string, args ...string) error {
+		calls = append(calls, append([]string{name}, args...))
+		return nil
+	}
+	var buf strings.Builder
+	printer := ui.NewPrinter(&buf, false)
+	code := Execute([]string{"dns", "flush"}, &stubApp{}, printer)
+	if code != ExitSuccess {
+		t.Fatalf("code = %d, want ExitSuccess; output=%q", code, buf.String())
+	}
+	wantCalls := [][]string{{"sudo", "dscacheutil", "-flushcache"}, {"sudo", "killall", "-HUP", "mDNSResponder"}}
+	if !reflect.DeepEqual(calls, wantCalls) {
+		t.Fatalf("commands = %v, want %v", calls, wantCalls)
+	}
+	if !strings.Contains(buf.String(), "DNS cache flushed successfully") || !strings.Contains(buf.String(), "mDNSResponder restarted") {
+		t.Fatalf("success output = %q", buf.String())
+	}
+}
+
+type dnsFlusherFunc func(string, dnsflush.Runner, func(string)) error
+
+func (f dnsFlusherFunc) Flush(goos string, run dnsflush.Runner, report func(string)) error {
+	return f(goos, run, report)
 }
 
 func TestUnknownFlag(t *testing.T) {

@@ -96,6 +96,7 @@ Commands:
   info     Show detailed information about a port
   kill     Kill process using a port
   free     Find and kill process using a port
+  dns      Manage DNS cache
 
 Examples:
   portctl ls
@@ -103,6 +104,7 @@ Examples:
   portctl kill 3000
   portctl kill 3000 8080
   portctl free 3000
+  portctl dns flush
 ```
 
 ---
@@ -691,6 +693,14 @@ kp 3000
 # 24. Installation
 
 ต้อง support:
+
+## Install a published release
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ofly153351/portctl/main/install.sh | sh
+```
+
+The installer selects a macOS/Linux binary by OS and architecture, downloads it from GitHub Releases, and installs it into `/usr/local/bin` (using `sudo` only when required). `PORTCTL_VERSION` selects a specific release, `PORTCTL_REPO` allows a fork, and `PORTCTL_INSTALL_DIR` selects a writable custom install directory. Release assets must be named `portctl_darwin_arm64`, `portctl_darwin_amd64`, `portctl_linux_arm64`, and `portctl_linux_amd64`.
 
 ## Build from source
 
@@ -1418,6 +1428,29 @@ curl http://localhost:3000
 16. Documentation ต้องทำพร้อม implementation
 17. อย่าเพิ่ม dependency ถ้า standard library เพียงพอ
 18. ถ้าพบ design ที่ดีกว่าในระหว่างพัฒนา สามารถปรับ architecture ได้ แต่ต้องรักษา requirements ทั้งหมดในไฟล์นี้
+
+---
+
+# 49. DNS Cache Flush
+
+Add the macOS-only command:
+
+```bash
+portctl dns flush
+```
+
+It must run `sudo dscacheutil -flushcache` followed by
+`sudo killall -HUP mDNSResponder`, report each successful operation, and stop
+with a readable error if either command fails. On other operating systems,
+report that DNS cache flush is currently supported only on macOS. Do not modify
+DNS or network configuration.
+
+Example:
+
+```bash
+# Flush macOS DNS cache
+portctl dns flush
+```
 
 ---
 

@@ -16,6 +16,7 @@ portctl kill 3000
 - ✓ List ports and their processes (`ls`)
 - ✓ Inspect processes on a port (`info`)
 - ✓ Kill processes by port (`kill`)
+- ✓ Flush macOS DNS cache (`dns flush`)
 - ✓ Multiple ports in one command
 - ✓ Force mode (`--force` / `-f`)
 - ✓ JSON output (`--json`)
@@ -27,6 +28,24 @@ portctl kill 3000
 - ✓ Linux support
 
 ## Installation
+
+### Install a published release (macOS / Linux)
+
+Once a GitHub Release is published with platform binaries, install the latest version with:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ofly153351/portctl/main/install.sh | sh
+```
+
+The installer detects OS/architecture, downloads the matching release binary, and installs it to `/usr/local/bin` (requests `sudo` if needed). It does not modify shell files, DNS settings, or network configuration. To install a specific tagged release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ofly153351/portctl/main/install.sh | PORTCTL_VERSION=0.2.0 sh
+```
+
+For a fork, set `PORTCTL_REPO=owner/repo`. To use a writable custom install directory, set `PORTCTL_INSTALL_DIR="$HOME/.local/bin"` and ensure it is on your `PATH`.
+
+Note: the installer downloads published GitHub Release assets; pushing source changes alone does not publish an installable binary. A release needs assets named `portctl_darwin_arm64`, `portctl_darwin_amd64`, `portctl_linux_arm64`, and `portctl_linux_amd64` for all listed platforms.
 
 ### Build from source
 
@@ -82,6 +101,7 @@ Commands:
   info     Show detailed information about a port
   kill     Kill process using a port
   free     Find and kill process using a port
+  dns      Manage DNS cache
 
 Options:
   --json       Machine-readable JSON output
@@ -108,6 +128,9 @@ portctl kill 3000
 
 # Kill multiple ports
 portctl kill 3000 8080
+
+# Flush macOS DNS cache
+portctl dns flush
 
 # Force kill (no confirmation, SIGKILL)
 portctl kill 3000 --force

@@ -32,6 +32,7 @@ Commands:
   info     Show detailed information about a port
   kill     Kill process using a port
   free     Find and kill process using a port
+  dns      Manage DNS cache
 
 Options:
   --json       Machine-readable JSON output
@@ -48,7 +49,8 @@ Examples:
   portctl info 3000
   portctl kill 3000
   portctl kill 3000 8080
-  portctl free 3000`
+  portctl free 3000
+  portctl dns flush`
 
 // Execute runs the CLI with the given arguments and returns the process
 // exit code. The App and Printer are injected for testability.
@@ -77,6 +79,8 @@ func Execute(args []string, application app.App, printer *ui.Printer) int {
 		return runKill(rest, application, printer)
 	case "free", "f":
 		return runFree(rest, application, printer)
+	case "dns":
+		return runDNS(rest, printer)
 	default:
 		printer.Error(fmt.Sprintf("unknown command %q", cmd))
 		printer.Info("")
